@@ -143,8 +143,8 @@ case $action in
         read -p "Введите имя пользователя: " user_name
         user_uuid=$(generate_uuid)
         keys=$(generate_x25519_keys)
-        private_key=$(echo "$keys" | grep 'Private Key:' | awk '{print $NF}')
-        public_key=$(echo "$keys" | grep 'Public Key:' | awk '{print $NF}')
+        private_key=$(echo "$keys" | grep 'Private Key:' | awk '{print $NF}' | sed 's/ //g')
+        public_key=$(echo "$keys" | grep 'Public Key:' | awk '{print $NF}' | sed 's/ //g')
         ss_password=$(generate_base64_key)  # Генерация пароля для Shadowsocks
 
         # Добавление нового пользователя

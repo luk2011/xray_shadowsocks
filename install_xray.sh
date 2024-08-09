@@ -1,12 +1,121 @@
 #!/bin/bash
 
-# Установка необходимых пакетов
-echo "Устанавливаем jq и openssl..."
-sudo apt-get update
-sudo apt-get install -y jq openssl
+# Функция для установки Xray
+install_xray() {
+    echo "Установка Xray..."
+    
+    # Удаление старых версий Xray
+    if command -v xray >/dev/null 2>&1; then
+        echo "Xray уже установлен. Удаляем старую версию..."
+        apt-get remove --purge xray -y
+    fi
 
-# Установка Xray
-bash -c "$(curl -L https://github.com/XTLS/Xray-install/raw/main/install-release.sh)" @ install
+    # Загрузка и установка Xray
+    wget -qO - https://github.com/XTLS/Xray-core/releases/latest/download/xray-linux-amd64.zip -O /tmp/xray.zip
+    unzip /tmp/xray.zip -d /usr/local/bin/
+    chmod +x /usr/local/bin/xray
+    rm /tmp/xray.zip
+
+    # Создание необходимой директории
+    mkdir -p /usr/local/etc/xray
+
+    # Создание конфигурационного файла по умолчанию
+    cat > $CONFIG_FILE <<EOF
+{
+  "log": {
+    "loglevel": "info"
+  },
+  "inbounds": [
+    {
+      "listen": "0.0.0.0",
+      "port": 443,
+      "protocol": "vless",
+      "tag": "reality-in",
+      "settings": {
+        "clients": [],
+        "decryption": "none"
+      },
+      "streamSettings": {
+        "network": "tcp",
+        "security": "reality",
+        "realitySettings": {
+          "show": false,
+          "dest": "localhost:443",
+          "xver": 0,
+          "serverNames": [],
+          "privateKey": "",
+          "minClientVer": "",
+          "maxClientVer": "",
+          "maxTimeDiff": 0,
+          "shortIds": []
+        }
+      },
+      "sniffing": {
+        "enabled": true,
+        "destOverride": [
+          "http",
+          "tls",
+          "quic"
+        ]
+      }
+    },
+    {
+      "port": 51378,
+      "tag": "ss-in",
+      "protocol": "shadowsocks",
+      "settings": {
+        "method": "2022-blake3-aes-128-gcm",
+        "password": "",
+        "network": "tcp,udp"
+      },
+      "sniffing": {
+        "enabled": true,
+        "destOverride": [
+          "http",
+          "tls",
+          "quic"
+        ]
+      }
+    }
+  ],
+  "outbounds": [
+    {
+      "protocol": "freedom",
+      "tag": "direct"
+    },
+    {
+      "protocol": "blackhole",
+      "tag": "block"
+    }
+  ],
+  "routing": {
+    "rules": [
+      {
+        "type": "field",
+        "protocol": "bittorrent",
+        "outboundTag": "block"
+      }
+    ],
+    "domainStrategy": "IPIfNonMatch"
+  }
+}
+EOF
+
+    # Установка необходимых зависимостей
+    apt-get update
+    apt-get install -y jq unzip curl
+
+    # Создание папок
+    mkdir -p "$USER_DIR"
+    touch "$USER_LINKS_FILE"
+
+    # Включение и запуск Xray
+    systemctl enable xray
+    systemctl start xray
+
+    echo "Xray успешно установлен и запущен."
+}
+
 
 # Определение домашней папки текущего пользователя
 USER_HOME=$(eval echo ~$SUDO_USER)
@@ -85,8 +194,8 @@ read -p "Введите путь для WebSocket (например, mypath): " 
 # Генерация ключей и UUID
 echo "Генерация ключей и UUID..."
 keys=$(generate_x25519_keys)
-private_key=$(echo "$keys" | grep 'Private Key:' | awk '{print $NF}')
-public_key=$(echo "$keys" | grep 'Public Key:' | awk '{print $NF}')
+private_key=$(echo "$keys" | grep 'Private Key:' | awk '{print $NF}' | sed 's/ //g')
+public_key=$(echo "$keys" | grep 'Public Key:' | awk '{print $NF}' | sed 's/ //g')
 user_uuid=$(generate_uuid)
 ss_password=$(generate_base64_key)
 
@@ -253,6 +362,12 @@ cat > $CONFIG_FILE <<EOF
   }
 }
 EOF
+
+# Перезапуск Xray после изменения конфигурации
+    systemctl restart xray
+    echo "Конфигурация Xray обновлена."
+}
+
 # Копирование конфигурационного файла в домашнюю папку пользователя
 cp "$CONFIG_FILE" "$USER_CONFIG_FILE"
 
