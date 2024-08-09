@@ -1,5 +1,14 @@
 #!/bin/bash
 
+# Определение домашних папок и путей
+USER_HOME=$(eval echo ~$SUDO_USER)
+CONFIG_FILE="/usr/local/etc/xray/config.json"
+USER_CONFIG_FILE="$USER_HOME/xray_config.json"
+USER_DATA_FILE="$USER_HOME/xray_user_data.txt"
+CLIENT_LINKS_FILE="$USER_HOME/xray_client_links.txt"
+USER_DIR="$USER_HOME/xray_users"
+USER_LINKS_FILE="$USER_HOME/xray_user_links.txt"
+
 # Функция для установки Xray
 install_xray() {
     echo "Установка Xray..."
@@ -11,7 +20,7 @@ install_xray() {
     fi
 
     # Загрузка и установка Xray
-    wget -qO - https://github.com/XTLS/Xray-core/releases/latest/download/xray-linux-amd64.zip -O /tmp/xray.zip
+    wget -qO /tmp/xray.zip https://github.com/XTLS/Xray-core/releases/latest/download/xray-linux-amd64.zip
     unzip /tmp/xray.zip -d /usr/local/bin/
     chmod +x /usr/local/bin/xray
     rm /tmp/xray.zip
@@ -19,118 +28,12 @@ install_xray() {
     # Создание необходимой директории
     mkdir -p /usr/local/etc/xray
 
-    # Создание конфигурационного файла по умолчанию
-    cat > $CONFIG_FILE <<EOF
-{
-  "log": {
-    "loglevel": "info"
-  },
-  "inbounds": [
-    {
-      "listen": "0.0.0.0",
-      "port": 443,
-      "protocol": "vless",
-      "tag": "reality-in",
-      "settings": {
-        "clients": [],
-        "decryption": "none"
-      },
-      "streamSettings": {
-        "network": "tcp",
-        "security": "reality",
-        "realitySettings": {
-          "show": false,
-          "dest": "localhost:443",
-          "xver": 0,
-          "serverNames": [],
-          "privateKey": "",
-          "minClientVer": "",
-          "maxClientVer": "",
-          "maxTimeDiff": 0,
-          "shortIds": []
-        }
-      },
-      "sniffing": {
-        "enabled": true,
-        "destOverride": [
-          "http",
-          "tls",
-          "quic"
-        ]
-      }
-    },
-    {
-      "port": 51378,
-      "tag": "ss-in",
-      "protocol": "shadowsocks",
-      "settings": {
-        "method": "2022-blake3-aes-128-gcm",
-        "password": "",
-        "network": "tcp,udp"
-      },
-      "sniffing": {
-        "enabled": true,
-        "destOverride": [
-          "http",
-          "tls",
-          "quic"
-        ]
-      }
-    }
-  ],
-  "outbounds": [
-    {
-      "protocol": "freedom",
-      "tag": "direct"
-    },
-    {
-      "protocol": "blackhole",
-      "tag": "block"
-    }
-  ],
-  "routing": {
-    "rules": [
-      {
-        "type": "field",
-        "protocol": "bittorrent",
-        "outboundTag": "block"
-      }
-    ],
-    "domainStrategy": "IPIfNonMatch"
-  }
-}
-EOF
-
     # Установка необходимых зависимостей
     apt-get update
     apt-get install -y jq unzip curl
 
-    # Создание папок
-    mkdir -p "$USER_DIR"
-    touch "$USER_LINKS_FILE"
-
-    # Включение и запуск Xray
-    systemctl enable xray
-    systemctl start xray
-
-    echo "Xray успешно установлен и запущен."
+    echo "Xray успешно установлен."
 }
-
-
-# Определение домашней папки текущего пользователя
-USER_HOME=$(eval echo ~$SUDO_USER)
-# Путь к конфигурационному файлу Xray
-CONFIG_FILE="/usr/local/etc/xray/config.json"
-# Путь для сохранения копии конфигурационного файла в домашнюю папку текущего пользователя
-USER_CONFIG_FILE="$USER_HOME/xray_config.json"
-# Путь для сохранения файла с данными пользователя
-USER_DATA_FILE="$USER_HOME/xray_user_data.txt"
-# Путь для сохранения всех ссылок для клиента
-CLIENT_LINKS_FILE="$USER_HOME/xray_client_links.txt"
-# Путь для создания папки пользователей в корневой папке текущего пользователя
-USER_DIR="$USER_HOME/xray_users"
-# Путь для сохранения ссылок пользователей
-USER_LINKS_FILE="$USER_HOME/xray_user_links.txt"
 
 # Функция для генерации UUID
 generate_uuid() {
@@ -147,7 +50,7 @@ generate_base64_key() {
     openssl rand -base64 16
 }
 
-# Список популярных сайтов, которые обычно не блокируются в России
+# Список популярных сайтов для маскировки
 sites=(
     "example.com"
     "wikipedia.org"
@@ -160,6 +63,7 @@ sites=(
     "cnn.com"
     "techcrunch.com"
 )
+
 # Функция для отображения списка сайтов
 display_sites() {
     echo "Выберите сайт для подмены (введите цифру от 1 до ${#sites[@]}, или 0 для ввода собственного):"
@@ -194,8 +98,8 @@ read -p "Введите путь для WebSocket (например, mypath): " 
 # Генерация ключей и UUID
 echo "Генерация ключей и UUID..."
 keys=$(generate_x25519_keys)
-private_key=$(echo "$keys" | grep 'Private Key:' | awk '{print $NF}' | sed 's/ //g')
-public_key=$(echo "$keys" | grep 'Public Key:' | awk '{print $NF}' | sed 's/ //g')
+private_key=$(echo "$keys" | grep 'Private Key:' | awk '{print $NF}')
+public_key=$(echo "$keys" | grep 'Public Key:' | awk '{print $NF}')
 user_uuid=$(generate_uuid)
 ss_password=$(generate_base64_key)
 
@@ -270,7 +174,7 @@ EOF
         
         # Запись ссылок в файл
         echo "VLESS Link for $user_name: $user_vless_link" >> "$USER_LINKS_FILE"
-echo "Shadowsocks Link for $user_name: $user_ss_link" >> "$USER_LINKS_FILE"
+        echo "Shadowsocks Link for $user_name: $user_ss_link" >> "$USER_LINKS_FILE"
     done
 
     # Удаление последней запятой и добавление закрывающей скобки
@@ -363,11 +267,6 @@ cat > $CONFIG_FILE <<EOF
 }
 EOF
 
-# Перезапуск Xray после изменения конфигурации
-    systemctl restart xray
-    echo "Конфигурация Xray обновлена."
-}
-
 # Копирование конфигурационного файла в домашнюю папку пользователя
 cp "$CONFIG_FILE" "$USER_CONFIG_FILE"
 
@@ -376,6 +275,10 @@ cat > "$CLIENT_LINKS_FILE" <<EOF
 VLESS Link: vless://$user_uuid@$server_ip:443/?encryption=none&type=tcp&sni=$camouflage_domain&fp=chrome&security=reality&alpn=h2&flow=xtls-rprx-vision&pbk=$public_key&packetEncoding=xudp
 Shadowsocks Link: ss://2022-blake3-aes-128-gcm:$ss_password@$server_ip:$ss_port
 EOF
+
+# Перезапуск Xray после изменения конфигурации
+systemctl restart xray
+echo "Конфигурация Xray обновлена."
 
 # Применение новых настроек системного уровня
 echo -e "\nНастройка системных параметров..."
@@ -394,4 +297,7 @@ echo "Конфигурационный файл: $USER_CONFIG_FILE"
 echo "Файл с данными пользователя: $USER_DATA_FILE"
 echo "Файл с ссылками для клиента: $CLIENT_LINKS_FILE"
 echo "Файл с ссылками пользователей: $USER_LINKS_FILE"
+}
 
+# Вызов функции для установки Xray
+install_xray
