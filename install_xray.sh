@@ -44,29 +44,19 @@ generate_uuid() {
 generate_x25519_keys() {
     local private_key_file="/tmp/private_key.pem"
     local public_key_file="/tmp/public_key.pem"
-    
+
     # Генерация приватного ключа
     openssl genpkey -algorithm X25519 -out "$private_key_file"
-    
-    # Проверка успешности генерации ключа
-    if [ $? -ne 0 ]; then
-        echo "Ошибка при генерации приватного ключа."
-        exit 1
-    fi
-    
-    # Генерация публичного ключа из приватного
+
+    # Генерация публичного ключа
     openssl pkey -in "$private_key_file" -pubout -out "$public_key_file"
+
+    # Извлечение приватного ключа без заголовков и новых строк
+    local private_key=$(openssl pkey -in "$private_key_file" -outform DER | base64 | tr -d '\n')
     
-    # Проверка успешности генерации публичного ключа
-    if [ $? -ne 0 ]; then
-        echo "Ошибка при генерации публичного ключа."
-        exit 1
-    fi
-    
-    # Чтение ключей
-    local private_key=$(cat "$private_key_file" | grep -vE '^-----')
-    local public_key=$(cat "$public_key_file" | grep -vE '^-----')
-    
+    # Извлечение публичного ключа без заголовков и новых строк
+    local public_key=$(openssl pkey -in "$public_key_file" -pubout -outform DER | base64 | tr -d '\n')
+
     echo "$private_key"
     echo "$public_key"
 }
@@ -129,7 +119,7 @@ public_key=$(echo "$keys" | sed -n '2p')
 user_uuid=$(generate_uuid)
 ss_password=$(generate_base64_key)
 
-# Вывод результатов для проверки
+# Вывод для проверки
 echo "Private Key: $private_key"
 echo "Public Key: $public_key"
 echo "UUID: $user_uuid"
