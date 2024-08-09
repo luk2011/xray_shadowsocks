@@ -1,9 +1,8 @@
 #!/bin/bash
 
 # Установка необходимых пакетов
-echo "Устанавливаем обновления системы..."
-sudo apt-get update -y && apt-get upgrade -y && apt-get dist-upgrade -y && apt autoclean && apt autoremove
 echo "Устанавливаем jq и openssl..."
+sudo apt-get update
 sudo apt-get install -y jq openssl
 
 # Установка Xray
@@ -31,8 +30,7 @@ generate_uuid() {
 
 # Функция для генерации публичного ключа из приватного
 generate_public_key() {
-    # Генерация публичного ключа из приватного
-    openssl pkey -in "$1" -pubout -outform DER | openssl base64
+    echo "$1" | openssl pkey -pubout -outform DER | openssl base64
 }
 
 # Функция для генерации случайного пароля в формате Base64
@@ -56,7 +54,7 @@ sites=(
 
 # Функция для отображения списка сайтов
 display_sites() {
-    echo "Выберите сайт для подмены (введите цифру от 1 до 10, или 0 для ввода собственного):"
+    echo "Выберите сайт для подмены (введите цифру от 1 до 8, или 0 для ввода собственного):"
     for i in "${!sites[@]}"; do
         echo "$((i + 1)). ${sites[$i]}"
     done
@@ -70,14 +68,14 @@ read -p "Ваш выбор: " choice
 
 # Определение маскировочного домена
 case $choice in
-    [1-9]|10)
+    [1-8])
         camouflage_domain="${sites[$((choice - 1))]}"
         ;;
     0)
         read -p "Введите маскировочный домен (например, example.com): " camouflage_domain
         ;;
     *)
-        echo "Некорректный выбор. Пожалуйста, выберите цифру от 0 до 10."
+        echo "Некорректный выбор. Пожалуйста, выберите цифру от 0 до 8."
         exit 1
         ;;
 esac
@@ -89,13 +87,8 @@ read -p "Введите UUID для пользователя (или остав�
 
 # Генерация приватного ключа, если пользователь не указал свой
 if [[ -z "$private_key" ]]; then
-    private_key_file="$USER_HOME/private_key.pem"
-    openssl genpkey -algorithm X25519 -out "$private_key_file"
-    private_key=$(openssl base64 -in "$private_key_file")
+    private_key=$(openssl genpkey -algorithm X25519 | openssl pkey -pubout -outform DER | openssl base64)
     echo "Сгенерирован приватный ключ: $private_key"
-else
-    # Преобразование введенного ключа в Base64
-    echo "$private_key" | base64
 fi
 
 # Генерация UUID, если пользователь не указал свой
@@ -105,7 +98,7 @@ if [[ -z "$user_uuid" ]]; then
 fi
 
 # Генерация публичного ключа из приватного
-public_key=$(generate_public_key "$private_key_file")
+public_key=$(generate_public_key "$private_key")
 
 # Генерация пароля для Shadowsocks
 ss_password=$(generate_base64_key)
@@ -170,6 +163,7 @@ EOF
 UUID: $user_id
 Private Key: $private_key
 Public Key: $public_key
+OpenSSL Key: $private_key
 EOF
 
         echo "Данные для пользователя $user_name сохранены в $user_file"
@@ -189,11 +183,12 @@ EOF
 fi
 
 # Создание конфигурационного файла
-cat > $CONFIG_FILE <<EOF
+cat > "$CONFIG_FILE" <<EOF
 {
   "log": {
     "loglevel": "info"
-   "inbounds": [
+  },
+  "inbounds": [
     {
       "listen": "$server_ip",
       "port": 443,
@@ -274,10 +269,10 @@ cat > $CONFIG_FILE <<EOF
 EOF
 
 # Копирование конфигурационного файла в домашнюю папку пользователя
-cp $CONFIG_FILE $USER_CONFIG_FILE
+cp "$CONFIG_FILE" "$USER_CONFIG_FILE"
 
 # Генерация и сохранение всех ссылок в файл
-cat > $CLIENT_LINKS_FILE <<EOF
+cat > "$CLIENT_LINKS_FILE" <<EOF
 VLESS Link: vless://$user_uuid@$server_ip:443/?encryption=none&type=tcp&sni=$camouflage_domain&fp=chrome&security=reality&alpn=h2&flow=xtls-rprx-vision&pbk=$public_key&packetEncoding=xudp
 Shadowsocks Link: ss://2022-blake3-aes-128-gcm:$ss_password@$server_ip:$ss_port
 EOF
