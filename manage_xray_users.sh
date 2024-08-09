@@ -13,12 +13,17 @@ USER_LINKS_FILE="$USER_HOME/xray_user_links.txt"
 
 # Функция для генерации нового UUID
 generate_uuid() {
-    uuidgen
+    xray uuid
 }
 
-# Функция для генерации публичного ключа из приватного
-generate_public_key() {
-    echo "$1" | openssl pkey -pubout -outform DER | openssl base64
+# Функция для генерации ключей X25519
+generate_x25519_keys() {
+    xray x25519
+}
+
+# Функция для генерации случайного пароля в формате Base64
+generate_base64_key() {
+    openssl rand -base64 16
 }
 
 # Функция для создания файлов пользователя
@@ -48,6 +53,7 @@ add_user() {
     local user_uuid="$2"
     local user_private_key="$3"
     local user_public_key="$4"
+    local ss_password="$5"
 
     echo "Добавление пользователя $user_name с UUID $user_uuid..."
 
@@ -136,12 +142,13 @@ case $action in
         # Ввод данных для нового пользователя
         read -p "Введите имя пользователя: " user_name
         user_uuid=$(generate_uuid)
-        private_key=$(openssl genpkey -algorithm X25519)
-        public_key=$(generate_public_key "$private_key")
-        ss_password=$(openssl rand -base64 16)  # Генерация пароля для Shadowsocks
+        keys=$(generate_x25519_keys)
+        private_key=$(echo "$keys" | grep 'Private Key:' | awk '{print $NF}')
+        public_key=$(echo "$keys" | grep 'Public Key:' | awk '{print $NF}')
+        ss_password=$(generate_base64_key)  # Генерация пароля для Shadowsocks
 
         # Добавление нового пользователя
-        add_user "$user_name" "$user_uuid" "$private_key" "$public_key"
+        add_user "$user_name" "$user_uuid" "$private_key" "$public_key" "$ss_password"
         echo "Пользователь $user_name успешно добавлен."
         ;;
     3)

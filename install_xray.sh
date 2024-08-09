@@ -23,14 +23,14 @@ USER_DIR="$USER_HOME/xray_users"
 # Путь для сохранения ссылок пользователей
 USER_LINKS_FILE="$USER_HOME/xray_user_links.txt"
 
-# Функция для генерации нового UUID
+# Функция для генерации UUID
 generate_uuid() {
-    uuidgen
+    xray uuid
 }
 
-# Функция для генерации публичного ключа из приватного
-generate_public_key() {
-    echo "$1" | openssl pkey -pubout -outform DER | openssl base64
+# Функция для генерации ключей X25519
+generate_x25519_keys() {
+    xray x25519
 }
 
 # Функция для генерации случайного пароля в формате Base64
@@ -51,10 +51,9 @@ sites=(
     "cnn.com"
     "techcrunch.com"
 )
-
 # Функция для отображения списка сайтов
 display_sites() {
-    echo "Выберите сайт для подмены (введите цифру от 1 до 10, или 0 для ввода собственного):"
+    echo "Выберите сайт для подмены (введите цифру от 1 до ${#sites[@]}, или 0 для ввода собственного):"
     for i in "${!sites[@]}"; do
         echo "$((i + 1)). ${sites[$i]}"
     done
@@ -68,39 +67,27 @@ read -p "Ваш выбор: " choice
 
 # Определение маскировочного домена
 case $choice in
-    [1-8])
+    [1-9]|10)
         camouflage_domain="${sites[$((choice - 1))]}"
         ;;
     0)
         read -p "Введите маскировочный домен (например, example.com): " camouflage_domain
         ;;
     *)
-        echo "Некорректный выбор. Пожалуйста, выберите цифру от 0 до 8."
+        echo "Некорректный выбор. Пожалуйста, выберите цифру от 0 до ${#sites[@]}."
         exit 1
         ;;
 esac
 
 # Запрос остальных данных
 read -p "Введите путь для WebSocket (например, mypath): " path
-read -p "Введите приватный ключ Reality (или оставьте пустым для генерации нового): " private_key
-read -p "Введите UUID для пользователя (или оставьте пустым для генерации нового): " user_uuid
 
-# Генерация приватного ключа, если пользователь не указал свой
-if [[ -z "$private_key" ]]; then
-    private_key=$(openssl genpkey -algorithm X25519 | openssl pkey -pubout -outform DER | openssl base64)
-    echo "Сгенерирован приватный ключ: $private_key"
-fi
-
-# Генерация UUID, если пользователь не указал свой
-if [[ -z "$user_uuid" ]]; then
-    user_uuid=$(generate_uuid)
-    echo "Сгенерирован UUID: $user_uuid"
-fi
-
-# Генерация публичного ключа из приватного
-public_key=$(generate_public_key "$private_key")
-
-# Генерация пароля для Shadowsocks
+# Генерация ключей и UUID
+echo "Генерация ключей и UUID..."
+keys=$(generate_x25519_keys)
+private_key=$(echo "$keys" | grep 'Private Key:' | awk '{print $NF}')
+public_key=$(echo "$keys" | grep 'Public Key:' | awk '{print $NF}')
+user_uuid=$(generate_uuid)
 ss_password=$(generate_base64_key)
 
 # Запрос порта для Shadowsocks
@@ -163,7 +150,6 @@ EOF
 UUID: $user_id
 Private Key: $private_key
 Public Key: $public_key
-OpenSSL Key: $private_key
 EOF
 
         echo "Данные для пользователя $user_name сохранены в $user_file"
@@ -175,7 +161,7 @@ EOF
         
         # Запись ссылок в файл
         echo "VLESS Link for $user_name: $user_vless_link" >> "$USER_LINKS_FILE"
-        echo "Shadowsocks Link for $user_name: $user_ss_link" >> "$USER_LINKS_FILE"
+echo "Shadowsocks Link for $user_name: $user_ss_link" >> "$USER_LINKS_FILE"
     done
 
     # Удаление последней запятой и добавление закрывающей скобки
@@ -183,7 +169,7 @@ EOF
 fi
 
 # Создание конфигурационного файла
-cat > "$CONFIG_FILE" <<EOF
+cat > $CONFIG_FILE <<EOF
 {
   "log": {
     "loglevel": "info"
@@ -267,7 +253,6 @@ cat > "$CONFIG_FILE" <<EOF
   }
 }
 EOF
-
 # Копирование конфигурационного файла в домашнюю папку пользователя
 cp "$CONFIG_FILE" "$USER_CONFIG_FILE"
 
@@ -294,3 +279,4 @@ echo "Конфигурационный файл: $USER_CONFIG_FILE"
 echo "Файл с данными пользователя: $USER_DATA_FILE"
 echo "Файл с ссылками для клиента: $CLIENT_LINKS_FILE"
 echo "Файл с ссылками пользователей: $USER_LINKS_FILE"
+
