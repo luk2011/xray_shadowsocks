@@ -42,10 +42,31 @@ generate_uuid() {
 
 # Функция для генерации ключей X25519
 generate_x25519_keys() {
-    local key_pair=$(openssl genpkey -algorithm X25519 -out /dev/stdout 2>/dev/null | openssl pkey -pubout -out /dev/stdout)
-    local private_key=$(echo "$key_pair" | grep 'Private Key:' | awk '{print $NF}' | sed 's/ //g')
-    local public_key=$(echo "$key_pair" | grep 'Public Key:' | awk '{print $NF}' | sed 's/ //g')
-
+    local private_key_file="/tmp/private_key.pem"
+    local public_key_file="/tmp/public_key.pem"
+    
+    # Генерация приватного ключа
+    openssl genpkey -algorithm X25519 -out "$private_key_file"
+    
+    # Проверка успешности генерации ключа
+    if [ $? -ne 0 ]; then
+        echo "Ошибка при генерации приватного ключа."
+        exit 1
+    fi
+    
+    # Генерация публичного ключа из приватного
+    openssl pkey -in "$private_key_file" -pubout -out "$public_key_file"
+    
+    # Проверка успешности генерации публичного ключа
+    if [ $? -ne 0 ]; then
+        echo "Ошибка при генерации публичного ключа."
+        exit 1
+    fi
+    
+    # Чтение ключей
+    local private_key=$(cat "$private_key_file" | grep -vE '^-----')
+    local public_key=$(cat "$public_key_file" | grep -vE '^-----')
+    
     echo "$private_key"
     echo "$public_key"
 }
@@ -107,6 +128,12 @@ private_key=$(echo "$keys" | sed -n '1p')
 public_key=$(echo "$keys" | sed -n '2p')
 user_uuid=$(generate_uuid)
 ss_password=$(generate_base64_key)
+
+# Вывод результатов для проверки
+echo "Private Key: $private_key"
+echo "Public Key: $public_key"
+echo "UUID: $user_uuid"
+echo "Shadowsocks Password: $ss_password"
 
 # Запрос порта для Shadowsocks
 read -p "Введите порт для Shadowsocks (например, 54321): " ss_port
