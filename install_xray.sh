@@ -30,19 +30,13 @@ generate_uuid() {
 
 # Функция для генерации публичного ключа из приватного
 generate_public_key() {
-    echo "$1" | openssl pkey -pubout -outform DER | openssl base64
+    # Генерация публичного ключа из приватного
+    openssl pkey -in "$1" -pubout -outform DER | openssl base64
 }
 
 # Функция для генерации случайного пароля в формате Base64
 generate_base64_key() {
     openssl rand -base64 16
-}
-
-# Функция для генерации приватного ключа и его сохранения
-generate_and_save_private_key() {
-    local private_key_file="$USER_DIR/private_key.pem"
-    openssl genpkey -algorithm X25519 -out "$private_key_file"
-    cat "$private_key_file" | openssl base64
 }
 
 # Список популярных сайтов в зоне .com
@@ -94,8 +88,13 @@ read -p "Введите UUID для пользователя (или остав�
 
 # Генерация приватного ключа, если пользователь не указал свой
 if [[ -z "$private_key" ]]; then
-    private_key=$(generate_and_save_private_key)
+    private_key_file="$USER_HOME/private_key.pem"
+    openssl genpkey -algorithm X25519 -out "$private_key_file"
+    private_key=$(openssl base64 -in "$private_key_file")
     echo "Сгенерирован приватный ключ: $private_key"
+else
+    # Преобразование введенного ключа в Base64
+    echo "$private_key" | base64
 fi
 
 # Генерация UUID, если пользователь не указал свой
@@ -105,7 +104,7 @@ if [[ -z "$user_uuid" ]]; then
 fi
 
 # Генерация публичного ключа из приватного
-public_key=$(generate_public_key "$private_key")
+public_key=$(generate_public_key "$private_key_file")
 
 # Генерация пароля для Shadowsocks
 ss_password=$(generate_base64_key)
@@ -126,9 +125,9 @@ if [[ "$change_ssh_port" == "y" ]]; then
 
     # Изменение порта SSH
     echo "Изменение порта SSH на $ssh_port..."
-    sed -i "s/^#Port 22/Port $ssh_port/" /etc/ssh/sshd_config
-    sed -i "s/^Port 22/Port $ssh_port/" /etc/ssh/sshd_config
-    systemctl restart sshd
+    sudo sed -i "s/^#Port 22/Port $ssh_port/" /etc/ssh/sshd_config
+    sudo sed -i "s/^Port 22/Port $ssh_port/" /etc/ssh/sshd_config
+    sudo systemctl restart sshd
     echo "Порт SSH успешно изменен на $ssh_port."
 fi
 
@@ -170,7 +169,6 @@ EOF
 UUID: $user_id
 Private Key: $private_key
 Public Key: $public_key
-OpenSSL Key: $private_key
 EOF
 
         echo "Данные для пользователя $user_name сохранены в $user_file"
@@ -194,8 +192,7 @@ cat > $CONFIG_FILE <<EOF
 {
   "log": {
     "loglevel": "info"
-  },
-  "inbounds": [
+   "inbounds": [
     {
       "listen": "$server_ip",
       "port": 443,
@@ -238,7 +235,6 @@ cat > $CONFIG_FILE <<EOF
       "tag": "ss-in",
       "protocol": "shadowsocks",
       "settings": {
-        "method": "2022-blake3-a
         "method": "2022-blake3-aes-128-gcm",
         "password": "$ss_password",
         "network": "tcp,udp"
