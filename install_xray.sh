@@ -5,7 +5,7 @@ echo "Устанавливаем jq и openssl..."
 sudo apt-get update
 sudo apt-get install -y jq openssl
 
-#Установка Xray
+# Установка Xray
 bash -c "$(curl -L https://github.com/XTLS/Xray-install/raw/main/install-release.sh)" @ install
 
 # Определение домашней папки текущего пользователя
@@ -36,6 +36,13 @@ generate_public_key() {
 # Функция для генерации случайного пароля в формате Base64
 generate_base64_key() {
     openssl rand -base64 16
+}
+
+# Функция для генерации приватного ключа и его сохранения
+generate_and_save_private_key() {
+    local private_key_file="$USER_DIR/private_key.pem"
+    openssl genpkey -algorithm X25519 -out "$private_key_file"
+    cat "$private_key_file" | openssl base64
 }
 
 # Список популярных сайтов в зоне .com
@@ -87,7 +94,7 @@ read -p "Введите UUID для пользователя (или остав�
 
 # Генерация приватного ключа, если пользователь не указал свой
 if [[ -z "$private_key" ]]; then
-    private_key=$(openssl genpkey -algorithm X25519 | openssl pkey -pubout -outform DER | openssl base64)
+    private_key=$(generate_and_save_private_key)
     echo "Сгенерирован приватный ключ: $private_key"
 fi
 
@@ -163,12 +170,13 @@ EOF
 UUID: $user_id
 Private Key: $private_key
 Public Key: $public_key
+OpenSSL Key: $private_key
 EOF
 
         echo "Данные для пользователя $user_name сохранены в $user_file"
         
         # Формирование ссылки для VLESS
-        user_vless_link="vless://$user_id@$server_ip:443/?encryption=none&type=http&sni=$camouflage_domain&host=somefakedummytext.com&path=%2F0J3QsNCy0LDQu9GM0L3Ri9C5&fp=chrome&security=reality&alpn=h2&pbk=$public_key&packetEncoding=xudp"
+        user_vless_link="vless://$user_uuid@$server_ip:443/?encryption=none&type=tcp&sni=$camouflage_domain&fp=chrome&security=reality&alpn=h2&flow=xtls-rprx-vision&pbk=$public_key&packetEncoding=xudp"
         # Формирование ссылки для Shadowsocks
         user_ss_link="ss://2022-blake3-aes-128-gcm:$ss_password@$server_ip:$ss_port"
         
@@ -200,14 +208,7 @@ cat > $CONFIG_FILE <<EOF
         "decryption": "none"
       },
       "streamSettings": {
-        "network": "http",
-        "httpSettings": {
-          "host": ["somefakedummytext.com"],
-          "path": "/0J3QsNCy0LDQu9GM0L3Ri9C5",
-          "read_idle_timeout": 10,
-          "health_check_timeout": 15,
-          "method": "GET"
-        },
+        "network": "tcp",
         "security": "reality",
         "realitySettings": {
           "show": false,
@@ -237,6 +238,7 @@ cat > $CONFIG_FILE <<EOF
       "tag": "ss-in",
       "protocol": "shadowsocks",
       "settings": {
+        "method": "2022-blake3-a
         "method": "2022-blake3-aes-128-gcm",
         "password": "$ss_password",
         "network": "tcp,udp"
@@ -279,14 +281,14 @@ cp $CONFIG_FILE $USER_CONFIG_FILE
 
 # Генерация и сохранение всех ссылок в файл
 cat > $CLIENT_LINKS_FILE <<EOF
-VLESS Link: vless://$user_uuid@$server_ip:443/?encryption=none&type=http&sni=$camouflage_domain&host=somefakedummytext.com&path=%2F0J3QsNCy0LDQu9GM0L3Ri9C5&fp=chrome&security=reality&alpn=h2&pbk=$public_key&packetEncoding=xudp
+VLESS Link: vless://$user_uuid@$server_ip:443/?encryption=none&type=tcp&sni=$camouflage_domain&fp=chrome&security=reality&alpn=h2&flow=xtls-rprx-vision&pbk=$public_key&packetEncoding=xudp
 Shadowsocks Link: ss://2022-blake3-aes-128-gcm:$ss_password@$server_ip:$ss_port
 EOF
 
 # Применение новых настроек системного уровня
 echo -e "\nНастройка системных параметров..."
-echo -e "net.core.default_qdisc=fq\nnet.ipv4.tcp_congestion_control=bbr" >> /etc/sysctl.conf
-sysctl -p
+echo -e "net.core.default_qdisc=fq\nnet.ipv4.tcp_congestion_control=bbr" | sudo tee -a /etc/sysctl.conf
+sudo sysctl -p
 
 echo -e "\nКонфигурация Xray успешно создана и применена!"
 echo "IP-адрес сервера: $server_ip"
