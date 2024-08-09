@@ -42,20 +42,12 @@ generate_uuid() {
 
 # Функция для генерации ключей X25519
 generate_x25519_keys() {
-    local private_key_file="/tmp/private_key.pem"
-    local public_key_file="/tmp/public_key.pem"
+    local private_key
+    local public_key
 
-    # Генерация приватного ключа
-    openssl genpkey -algorithm X25519 -out "$private_key_file"
-
-    # Генерация публичного ключа
-    openssl pkey -in "$private_key_file" -pubout -out "$public_key_file"
-
-    # Извлечение приватного ключа без заголовков и новых строк
-    local private_key=$(openssl pkey -in "$private_key_file" -outform DER | base64 | tr -d '\n')
-    
-    # Извлечение публичного ключа без заголовков и новых строк
-    local public_key=$(openssl pkey -in "$public_key_file" -pubout -outform DER | base64 | tr -d '\n')
+    # Генерация ключей X25519 с использованием openssl и извлечение напрямую в формате base64
+    private_key=$(openssl genpkey -algorithm X25519 | openssl pkey -outform DER | base64 | tr -d '\n')
+    public_key=$(echo "$private_key" | openssl pkey -pubout -outform DER | base64 | tr -d '\n')
 
     echo "$private_key"
     echo "$public_key"
