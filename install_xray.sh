@@ -38,23 +38,23 @@ generate_base64_key() {
     openssl rand -base64 16
 }
 
-# Список популярных сайтов в зоне .com
+# Список популярных сайтов, которые обычно не блокируются в России
 sites=(
-    "google.com"
-    "facebook.com"
-    "youtube.com"
-    "amazon.com"
-    "microsoft.com"
-    "apple.com"
-    "netflix.com"
-    "twitter.com"
-    "linkedin.com"
-    "instagram.com"
+    "example.com"
+    "wikipedia.org"
+    "github.com"
+    "stackoverflow.com"
+    "reddit.com"
+    "imdb.com"
+    "nytimes.com"
+    "bloomberg.com"
+    "cnn.com"
+    "techcrunch.com"
 )
 
 # Функция для отображения списка сайтов
 display_sites() {
-    echo "Выберите сайт для подмены (введите цифру от 1 до 8, или 0 для ввода собственного):"
+    echo "Выберите сайт для подмены (введите цифру от 1 до 10, или 0 для ввода собственного):"
     for i in "${!sites[@]}"; do
         echo "$((i + 1)). ${sites[$i]}"
     done
