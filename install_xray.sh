@@ -1,8 +1,9 @@
 #!/bin/bash
 
 # Установка необходимых пакетов
+echo "Устанавливаем обновления системы..."
+sudo apt-get update -y && apt-get upgrade -y && apt-get dist-upgrade -y && apt autoclean && apt autoremove
 echo "Устанавливаем jq и openssl..."
-sudo apt-get update
 sudo apt-get install -y jq openssl
 
 # Установка Xray
