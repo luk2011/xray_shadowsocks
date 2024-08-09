@@ -31,36 +31,26 @@ install_xray() {
     # Установка необходимых зависимостей
     apt-get update
     apt-get install -y jq unzip curl libsodium-dev
-    wget https://download.libsodium.org/libsodium/releases/libsodium-1.0.18.tar.gz
-    tar -xzvf libsodium-1.0.18.tar.gz
-    cd libsodium-1.0.18
-    ./configure
-    make && make check
-    sudo make install
-    sudo ldconfig
-
     echo "Xray успешно установлен."
 }
 
 # Функция для генерации UUID
 generate_uuid() {
-    xray uuid
+    uuidgen
 }
 
 # Функция для генерации ключей X25519
 generate_x25519_keys() {
-    local private_key_file="/tmp/private_key.pem"
-    local public_key_file="/tmp/public_key.pem"
-
-generate_x25519_keys() {
-    # Генерация ключей
-    local private_key=$(openssl rand -base64 32 | tr -d '\n' | base64 -d | sodium-keygen -o - | head -c 32 | base64)
-    local public_key=$(echo "$private_key" | base64 -d | sodium-public | base64 | tr -d '\n')
-
-    echo "$private_key"
-    echo "$public_key"
+    # Проверка наличия команды xray x25519
+    if command -v xray >/dev/null 2>&1; then
+        keys=$(xray x25519)
+        private_key=$(echo "$keys" | grep "Private key" | awk '{print $3}')
+        public_key=$(echo "$keys" | grep "Public key" | awk '{print $3}')
+    else
+        echo "Команда xray x25519 не найдена. Используйте альтернативный метод генерации ключей."
+        exit 1
+    fi
 }
-
 
 # Функция для генерации случайного пароля в формате Base64
 generate_base64_key() {
@@ -114,9 +104,7 @@ read -p "Введите путь для WebSocket (например, mypath): " 
 
 # Генерация ключей и UUID
 echo "Генерация ключей и UUID..."
-keys=$(generate_x25519_keys)
-private_key=$(echo "$keys" | sed -n '1p')
-public_key=$(echo "$keys" | sed -n '2p')
+generate_x25519_keys
 user_uuid=$(generate_uuid)
 ss_password=$(generate_base64_key)
 
@@ -191,7 +179,7 @@ EOF
         echo "Данные для пользователя $user_name сохранены в $user_file"
         
         # Формирование ссылки для VLESS
-        user_vless_link="vless://$user_uuid@$server_ip:443/?encryption=none&type=tcp&sni=$camouflage_domain&fp=chrome&security=reality&alpn=h2&flow=xtls-rprx-vision&pbk=$public_key&packetEncoding=xudp"
+        user_vless_link="vless://$user_id@$server_ip:443/?encryption=none&type=tcp&sni=$camouflage_domain&fp=chrome&security=reality&alpn=h2&flow=xtls-rprx-vision&pbk=$public_key&packetEncoding=xudp"
         # Формирование ссылки для Shadowsocks
         user_ss_link="ss://2022-blake3-aes-128-gcm:$ss_password@$server_ip:$ss_port"
         
