@@ -1,5 +1,10 @@
 #!/bin/bash
 
+# Установка необходимых пакетов
+echo "Устанавливаем jq и openssl..."
+sudo apt-get update
+sudo apt-get install -y jq openssl
+
 # Определение домашней папки текущего пользователя
 USER_HOME=$(eval echo ~$SUDO_USER)
 # Путь к конфигурационному файлу Xray
