@@ -30,7 +30,14 @@ install_xray() {
 
     # Установка необходимых зависимостей
     apt-get update
-    apt-get install -y jq unzip curl
+    apt-get install -y jq unzip curl libsodium-dev
+    wget https://download.libsodium.org/libsodium/releases/libsodium-1.0.18.tar.gz
+    tar -xzvf libsodium-1.0.18.tar.gz
+    cd libsodium-1.0.18
+    ./configure
+    make && make check
+    sudo make install
+    sudo ldconfig
 
     echo "Xray успешно установлен."
 }
@@ -45,17 +52,10 @@ generate_x25519_keys() {
     local private_key_file="/tmp/private_key.pem"
     local public_key_file="/tmp/public_key.pem"
 
-    # Генерация приватного ключа
-    openssl genpkey -algorithm X25519 -out "$private_key_file"
-    
-    # Извлечение публичного ключа из приватного
-    openssl pkey -in "$private_key_file" -pubout -out "$public_key_file"
-
-    # Чтение ключей из файлов и удаление файлов
-    private_key=$(openssl pkey -in "$private_key_file" -outform DER | base64 | tr -d '\n')
-    public_key=$(openssl pkey -in "$public_key_file" -pubout -outform DER | base64 | tr -d '\n')
-
-    rm -f "$private_key_file" "$public_key_file"
+generate_x25519_keys() {
+    # Генерация ключей
+    local private_key=$(openssl rand -base64 32 | tr -d '\n' | base64 -d | sodium-keygen -o - | head -c 32 | base64)
+    local public_key=$(echo "$private_key" | base64 -d | sodium-public | base64 | tr -d '\n')
 
     echo "$private_key"
     echo "$public_key"
