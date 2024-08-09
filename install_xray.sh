@@ -5,6 +5,9 @@ echo "Устанавливаем jq и openssl..."
 sudo apt-get update
 sudo apt-get install -y jq openssl
 
+#Установка Xray
+bash -c "$(curl -L https://github.com/XTLS/Xray-install/raw/main/install-release.sh)" @ install
+
 # Определение домашней папки текущего пользователя
 USER_HOME=$(eval echo ~$SUDO_USER)
 # Путь к конфигурационному файлу Xray
