@@ -42,7 +42,12 @@ generate_uuid() {
 
 # Функция для генерации ключей X25519
 generate_x25519_keys() {
-    xray x25519
+    local key_pair=$(openssl genpkey -algorithm X25519 -out /dev/stdout 2>/dev/null | openssl pkey -pubout -out /dev/stdout)
+    local private_key=$(echo "$key_pair" | grep 'Private Key:' | awk '{print $NF}' | sed 's/ //g')
+    local public_key=$(echo "$key_pair" | grep 'Public Key:' | awk '{print $NF}' | sed 's/ //g')
+
+    echo "$private_key"
+    echo "$public_key"
 }
 
 # Функция для генерации случайного пароля в формате Base64
@@ -98,8 +103,8 @@ read -p "Введите путь для WebSocket (например, mypath): " 
 # Генерация ключей и UUID
 echo "Генерация ключей и UUID..."
 keys=$(generate_x25519_keys)
-private_key=$(echo "$keys" | grep 'Private Key:' | awk '{print $NF}')
-public_key=$(echo "$keys" | grep 'Public Key:' | awk '{print $NF}')
+private_key=$(echo "$keys" | sed -n '1p')
+public_key=$(echo "$keys" | sed -n '2p')
 user_uuid=$(generate_uuid)
 ss_password=$(generate_base64_key)
 
@@ -297,7 +302,3 @@ echo "Конфигурационный файл: $USER_CONFIG_FILE"
 echo "Файл с данными пользователя: $USER_DATA_FILE"
 echo "Файл с ссылками для клиента: $CLIENT_LINKS_FILE"
 echo "Файл с ссылками пользователей: $USER_LINKS_FILE"
-}
-
-# Вызов функции для установки Xray
-install_xray
