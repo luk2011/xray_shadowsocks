@@ -392,7 +392,7 @@ EOF
 		  ]
 		}
 	  }
-	  EOF
+EOF
 	  
 			  echo "Конфигурация клиента сохранена в $client_config_file"
 		  done
