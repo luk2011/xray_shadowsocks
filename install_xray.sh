@@ -11,8 +11,13 @@ USER_LINKS_FILE="$USER_HOME/xray_user_links.txt"
 IPTABLES_RULES_FILE="$USER_HOME/iptables_rules.txt"
 
 	# Установка обновлений
-echo "Установка обновлений Linux"	
+echo "Установка обновлений Linux и необходимых пакетов"	
 apt-get update -y && apt-get upgrade && apt-get dist-upgrade
+#apt-get install -y jq unzip curl libsodium-dev
+
+# Установка Xray
+#echo "Устанавливаем Xray..."
+#bash -c "$(curl -L https://github.com/XTLS/Xray-install/raw/main/install-release.sh)" @ install
 
 # Функция для установки Xray
 echo "Установка Xray..."
@@ -25,13 +30,13 @@ install_xray() {
 	fi
 
 	# Загрузка и установка Xray
-	wget -qO /tmp/xray.zip https://github.com/XTLS/Xray-core/releases/latest/download/xray-linux-amd64.zip
-	unzip /tmp/xray.zip -d /usr/local/bin/
-	chmod +x /usr/local/bin/xray
-	rm /tmp/xray.zip
+	bash -c "$(curl -L https://github.com/XTLS/Xray-install/raw/main/install-release.sh)" @ install
 
 	# Создание необходимой директории
 	mkdir -p /usr/local/etc/xray
+	
+	# Основная часть скрипта
+	install_xray  # Вызов функции установки Xray
 
 	# Установка необходимых зависимостей
 	apt-get update
