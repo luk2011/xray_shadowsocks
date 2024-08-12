@@ -188,7 +188,7 @@ EOF
 		echo "Данные для пользователя $user_name сохранены в $user_file"
 		
 		# Формирование ссылки для VLESS
-		user_vless_link="vless://$user_id@$server_ip:443/?encryption=none&type=tcp&sni=$camouflage_domain&fp=chrome&security=reality&alpn=h2&flow=xtls-rprx-vision&pbk=$public_key&packetEncoding=xudp"
+		user_vless_link="vless://$user_uuid@$server_ip:443/?encryption=none&type=tcp&sni=$camouflage_domain&fp=chrome&security=reality&alpn=h2&flow=xtls-rprx-vision&pbk=$public_key&packetEncoding=xudp"
 		# Формирование ссылки для Shadowsocks
 		user_ss_link="ss://2022-blake3-aes-128-gcm:$ss_password@$server_ip:$ss_port"
 		
