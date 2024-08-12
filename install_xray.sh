@@ -165,12 +165,12 @@ if [[ "$add_users" == "y" ]]; then
 		fi
 		
 		# Генерация UUID для пользователя
-		user_id=$(generate_uuid)
+		$user_uuid=$(generate_uuid)
 		
 		# Добавление данных пользователя в конфигурацию
 		users_config+=$(cat <<EOF
 		{
-		  "id": "$user_id",
+		  "id": "$user_uuid",
 		  "email": "$user_name"
 		},
 EOF
