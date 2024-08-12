@@ -485,7 +485,7 @@ EOF
 		  "domainStrategy": "IPIfNonMatch"
 		}
 	  }
-	  EOF
+EOF
 	  
 	  # Копирование конфигурационного файла в домашнюю папку пользователя
 	  cp "$CONFIG_FILE" "$USER_CONFIG_FILE"
@@ -494,7 +494,7 @@ EOF
 	  cat > "$CLIENT_LINKS_FILE" <<EOF
 	  VLESS Link: vless://$user_uuid@$server_ip:443/?encryption=none&type=tcp&sni=$camouflage_domain&fp=chrome&security=reality&alpn=h2&flow=xtls-rprx-vision&pbk=$public_key&packetEncoding=xudp
 	  Shadowsocks Link: ss://2022-blake3-aes-128-gcm:$ss_password@$server_ip:$ss_port
-	  EOF
+EOF
 	  
 	  # Применение настроек iptables
 	  echo "Настройка iptables..."
