@@ -10,6 +10,10 @@ USER_DIR="$USER_HOME/xray_users"
 USER_LINKS_FILE="$USER_HOME/xray_user_links.txt"
 IPTABLES_RULES_FILE="$USER_HOME/iptables_rules.txt"
 
+	# Установка обновлений
+echo "Установка обновлений Linux"	
+apt-get update -y && apt-get upgrade && apt-get dist-upgrade
+
 # Функция для установки Xray
 install_xray() {
 	echo "Установка Xray..."
