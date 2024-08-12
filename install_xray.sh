@@ -15,9 +15,9 @@ echo "Установка обновлений Linux"
 apt-get update -y && apt-get upgrade && apt-get dist-upgrade
 
 # Функция для установки Xray
+echo "Установка Xray..."
 install_xray() {
-	echo "Установка Xray..."
-	
+		
 	# Удаление старых версий Xray
 	if command -v xray >/dev/null 2>&1; then
 		echo "Xray уже установлен. Удаляем старую версию..."
