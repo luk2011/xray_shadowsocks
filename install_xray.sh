@@ -179,7 +179,7 @@ EOF
 		# Создание файла с данными пользователя
 		user_file="$USER_DIR/${user_name}_data.txt"
 		cat > "$user_file" <<EOF
-UUID: $user_id
+UUID: $user_uuid
 Private Key: $private_key
 Public Key: $public_key
 ShadowSocks Password: $ss_password
