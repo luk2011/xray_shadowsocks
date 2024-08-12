@@ -35,14 +35,14 @@ install_xray() {
 	# Создание необходимой директории
 	mkdir -p /usr/local/etc/xray
 	
-	# Основная часть скрипта
-	install_xray  # Вызов функции установки Xray
-
 	# Установка необходимых зависимостей
 	apt-get update
 	apt-get install -y jq unzip curl libsodium-dev
 	echo "Xray успешно установлен."
 }
+
+# Основная часть скрипта
+install_xray  # Вызов функции установки Xray
 
 # Функция для генерации UUID
 generate_uuid() {
