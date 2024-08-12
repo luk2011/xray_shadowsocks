@@ -150,11 +150,8 @@ if [[ "$add_users" == "y" ]]; then
 	# Создание папки для пользователей
 	mkdir -p "$USER_DIR"
 	
-	# Инициализация переменных для хранения данных пользователей
+# Инициализация переменной для хранения данных пользователей
 	users_config=""
-	
-	# Очистка файла ссылок для пользователей
-	: > "$USER_LINKS_FILE"
 	
 	while true; do
 		# Ввод имени пользователя
@@ -165,240 +162,240 @@ if [[ "$add_users" == "y" ]]; then
 		fi
 		
 		# Генерация UUID для пользователя
-		$user_uuid=$(generate_uuid)
+		current_user_uuid=$(generate_uuid)
 		
 		# Добавление данных пользователя в конфигурацию
 		users_config+=$(cat <<EOF
-		{
-		  "id": "$user_uuid",
-		  "email": "$user_name"
-		},
+			{
+			  "id": "$current_user_uuid",
+			  "email": "$user_name"
+			},
 EOF
 		)
 		
 		# Создание файла с данными пользователя
 		user_file="$USER_DIR/${user_name}_data.txt"
 		cat > "$user_file" <<EOF
-UUID: $user_uuid
-Private Key: $private_key
-Public Key: $public_key
-ShadowSocks Password: $ss_password
+	UUID: $current_user_uuid
+	Private Key: $private_key
+	Public Key: $public_key
+	Shadowsocks Password: $ss_password
 EOF
-
+	
 		echo "Данные для пользователя $user_name сохранены в $user_file"
 		
 		# Формирование ссылки для VLESS
-		user_vless_link="vless://$user_uuid@$server_ip:443/?encryption=none&type=tcp&sni=$camouflage_domain&fp=chrome&security=reality&alpn=h2&flow=xtls-rprx-vision&pbk=$public_key&packetEncoding=xudp"
+		user_vless_link="vless://$current_user_uuid@$server_ip:443/?encryption=none&type=tcp&sni=$camouflage_domain&fp=chrome&security=reality&alpn=h2&flow=xtls-rprx-vision&pbk=$public_key&packetEncoding=xudp"
 		# Формирование ссылки для Shadowsocks
 		user_ss_link="ss://2022-blake3-aes-128-gcm:$ss_password@$server_ip:$ss_port"
 		
 		# Запись ссылок в файл
 		echo "VLESS Link for $user_name: $user_vless_link" >> "$USER_LINKS_FILE"
 		echo "Shadowsocks Link for $user_name: $user_ss_link" >> "$USER_LINKS_FILE"
-
+	
 		# Сохранение конфигурации клиента в отдельный JSON-файл
 		client_config_file="$USER_DIR/${user_name}_config.json"
 		cat > "$client_config_file" <<EOF
-{
-  "log": {
-	"access": "none",
-	"error": "",
-	"loglevel": "warning",
-	"dnsLog": false
-  },
-  "stats": {},
-  "policy": {
-	"levels": {
-	  "0": {
-		"statsUserUplink": true,
-		"statsUserDownlink": true
-	  }
-	},
-	"system": {
-	  "statsOutboundUplink": true,
-	  "statsOutboundDownlink": true
-	}
-  },
-  "api": {
-	"tag": "api",
-	"services": [
-	  "StatsService"
-	]
-  },
-  "inbounds": [
 	{
-	  "listen": "127.0.0.1",
-	  "port": 8080,
-	  "protocol": "dokodemo-door",
-	  "settings": {
-		"address": "127.0.0.1"
+	  "log": {
+		"access": "none",
+		"error": "",
+		"loglevel": "warning",
+		"dnsLog": false
 	  },
-	  "tag": "api"
-	},
-	{
-	  "tag": "socks",
-	  "port": 800,
-	  "listen": "127.0.0.1",
-	  "protocol": "socks",
-	  "sniffing": {
-		"enabled": true,
-		"destOverride": [
-		  "http",
-		  "tls"
-		],
-		"routeOnly": true
-	  },
-	  "settings": {
-				  "auth": "noauth",
-				  "udp": true
-			  }
-		  },
-		  {
-			  "tag": "http",
-			  "port": 801,
-			  "listen": "127.0.0.1",
-			  "protocol": "http",
-			  "sniffing": {
-				  "enabled": true,
-				  "destOverride": [
-					  "http",
-					  "tls"
-				  ],
-				  "routeOnly": true
-			  },
-			  "settings": {
-				  "auth": "noauth",
-				  "udp": true
-			  }
+	  "stats": {},
+	  "policy": {
+		"levels": {
+		  "0": {
+			"statsUserUplink": true,
+			"statsUserDownlink": true
 		  }
-		],
-		"outbounds": [
-		  {
-			"tag": "proxy",
-			"protocol": "vless",
-			"settings": {
-			  "vnext": [
-				{
-				  "address": "$server_ip",
-				  "port": 443,
-				  "users": [
-					{
-					  "id": "$user_uuid",
-					  "email": "$user_name",
-					  "encryption": "none",
-					  "flow": "xtls-rprx-vision"
-					}
-				  ]
-				}
-			  ]
-			},
-			"streamSettings": {
-			  "network": "tcp",
-			  "security": "reality",
-			  "realitySettings": {
-				"fingerprint": "chrome",
-				"serverName": "$camouflage_domain",
-				"show": false,
-				"publicKey": "$public_key",
-				"shortId": "$short_id"
-			  }
-			}
-		  },
-		  {
-			"tag": "direct",
-			"protocol": "freedom",
-			"settings": {}
-		  },
-		  {
-			"protocol": "blackhole",
-			"tag": "block"
-		  }
-		],
-		"routing": {
-		  "domainStrategy": "AsIs",
-		  "rules": [
-			{
-			  "type": "field",
-			  "inboundTag": [
-				"api"
-			  ],
-			  "outboundTag": "api"
-			},
-			{
-			  "type": "field",
-			  "network": "udp",
-			  "outboundTag": "direct"
-			},
-			{
-			  "type": "field",
-			  "ip": [
-				"geoip:private"
-			  ],
-			  "outboundTag": "block"
-			},
-			{
-			  "type": "field",
-			  "protocol": [
-				"bittorrent"
-			  ],
-			  "outboundTag": "direct"
-			},
-			{
-			  "type": "field",
-			  "port": "6969,6881-6889",
-			  "outboundTag": "direct"
-			},
-			{
-			  "type": "field",
-			  "sourcePort": "6881-6889",
-			  "outboundTag": "direct"
-			},
-			{
-			  "type": "field",
-			  "domain": [
-				"ext:customgeo.dat:coherence-extra-exceptions"
-			  ],
-			  "outboundTag": "proxy"
-			},
-			{
-			  "type": "field",
-			  "domain": [
-				"geosite:cn",
-				"domain:cn",
-				"domain:xn--fiqs8s",
-				"domain:xn--fiqz9s",
-				"domain:xn--55qx5d",
-				"domain:xn--io0a7i",
-				"domain:ru",
-				"domain:xn--p1ai",
-				"domain:by",
-				"domain:xn--90ais",
-				"domain:ir",
-				"ext:customgeo.dat:coherence-extra",
-				"ext:customgeo.dat:coherence-extra-plus"
-			  ],
-			  "outboundTag": "direct"
-			},
-			{
-			  "type": "field",
-			  "ip": [
-				"geoip:cn",
-				"geoip:ru",
-				"geoip:by",
-				"geoip:ir"
-			  ],
-			  "outboundTag": "direct"
-			}
-		  ]
+		},
+		"system": {
+		  "statsOutboundUplink": true,
+		  "statsOutboundDownlink": true
 		}
+	  },
+	  "api": {
+		"tag": "api",
+		"services": [
+		  "StatsService"
+		]
+	  },
+	  "inbounds": [
+		{
+		  "listen": "127.0.0.1",
+		  "port": 8080,
+		  "protocol": "dokodemo-door",
+		  "settings": {
+			"address": "127.0.0.1"
+		  },
+		  "tag": "api"
+		},
+		{
+		  "tag": "socks",
+		  "port": 800,
+		  "listen": "127.0.0.1",
+		  "protocol": "socks",
+		  "sniffing": {
+			"enabled": true,
+			"destOverride": [
+			  "http",
+			  "tls"
+			],
+			"routeOnly": true
+		  },
+		  "settings": {
+			"auth": "noauth",
+			"udp": true
+		  }
+		},
+		{
+		  "tag": "http",
+		  "port": 801,
+		  "listen": "127.0.0.1",
+		  "protocol": "http",
+		  "sniffing": {
+			"enabled": true,
+			"destOverride": [
+			  "http",
+			  "tls"
+			],
+			"routeOnly": true
+		  },
+		  "settings": {
+			"auth": "noauth",
+			"udp": true
+		  }
+		}
+	  ],
+	  "outbounds": [
+		{
+		  "tag": "proxy",
+		  "protocol": "vless",
+		  "settings": {
+			"vnext": [
+			  {
+				"address": "$server_ip",
+				"port": 443,
+				"users": [
+				  {
+					"id": "$current_user_uuid",
+					"email": "$user_name",
+					"encryption": "none",
+					"flow": "xtls-rprx-vision"
+				  }
+				]
+			  }
+			]
+		  },
+		  "streamSettings": {
+			"network": "tcp",
+			"security": "reality",
+			"realitySettings": {
+			  "fingerprint": "chrome",
+			  "serverName": "$camouflage_domain",
+			  "show": false,
+			  "publicKey": "$public_key",
+			  "shortId": "$short_id"
+			}
+		  }
+		},
+		{
+		  "tag": "direct",
+		  "protocol": "freedom",
+		  "settings": {}
+		},
+		{
+		  "protocol": "blackhole",
+		  "tag": "block"
+		}
+	  ],
+	  "routing": {
+		"domainStrategy": "AsIs",
+		"rules": [
+		  {
+			"type": "field",
+			"inboundTag": [
+			  "api"
+			],
+			"outboundTag": "api"
+		  },
+		  {
+			"type": "field",
+			"network": "udp",
+			"outboundTag": "direct"
+		  },
+		  {
+			"type": "field",
+			"ip": [
+			  "geoip:private"
+			],
+			"outboundTag": "block"
+		  },
+		  {
+			"type": "field",
+			"protocol": [
+			  "bittorrent"
+			],
+			"outboundTag": "direct"
+		  },
+		  {
+			"type": "field",
+			"port": "6969,6881-6889",
+			"outboundTag": "direct"
+		  },
+		  {
+			"type": "field",
+			"sourcePort": "6881-6889",
+			"outboundTag": "direct"
+		  },
+		  {
+			"type": "field",
+			"domain": [
+			  "ext:customgeo.dat:coherence-extra-exceptions"
+			],
+			"outboundTag": "proxy"
+		  },
+		  {
+			"type": "field",
+			"domain": [
+			  "geosite:cn",
+			  "domain:cn",
+			  "domain:xn--fiqs8s",
+			  "domain:xn--fiqz9s",
+			  "domain:xn--55qx5d",
+			  "domain:xn--io0a7i",
+			  "domain:ru",
+			  "domain:xn--p1ai",
+			  "domain:by",
+			  "domain:xn--90ais",
+			  "domain:ir",
+			  "ext:customgeo.dat:coherence-extra",
+			  "ext:customgeo.dat:coherence-extra-plus"
+			],
+			"outboundTag": "direct"
+		  },
+		  {
+			"type": "field",
+			"ip": [
+			  "geoip:cn",
+			  "geoip:ru",
+			  "geoip:by",
+			  "geoip:ir"
+			],
+			"outboundTag": "direct"
+		  }
+		]
 	  }
+	}
 EOF
-	  
-			  echo "Конфигурация клиента сохранена в $client_config_file"
-		  done
-	  
-		  # Удаление последней запятой и добавление закрывающей скобки
-		  users_config=$(echo "$users_config" | sed '$ s/,$//')
+	
+		echo "Конфигурация клиента сохранена в $client_config_file"
+	done
+	
+	# Удаление последней запятой и добавление закрывающей скобки
+	users_config=$(echo "$users_config" | sed '$ s/,$//')
 	  fi
 	  
 	  # Создание конфигурационного файла Xray
